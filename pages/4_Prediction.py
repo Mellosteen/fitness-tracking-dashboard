@@ -3,10 +3,8 @@ from __future__ import annotations
 import streamlit as st
 
 from src.auth import render_auth_sidebar, require_login
-from src.charts import prediction_chart
 from src.database import fetch_user_entries
-from src.ml import train_weight_model
-from src.metrics import prepare_entries
+from src.ml import MIN_REQUIRED_ENTRIES, build_prediction_dataset
 
 
 st.set_page_config(page_title="Prediction", layout="wide")
@@ -16,27 +14,53 @@ user = require_login()
 st.title("Weight Prediction")
 
 raw_entries = fetch_user_entries(user.id)
-if raw_entries.empty or len(raw_entries) < 14:
-    st.info("More data is needed. Add at least 14 daily entries to train the model.")
+dataset = build_prediction_dataset(raw_entries)
+
+if raw_entries.empty or len(raw_entries) < MIN_REQUIRED_ENTRIES:
+    st.info(
+        f"More data is needed. Add at least {MIN_REQUIRED_ENTRIES} daily entries "
+        "before training a model."
+    )
     st.stop()
 
-entries = prepare_entries(raw_entries)
-result = train_weight_model(entries)
-if result is None:
-    st.info("More complete data is needed to train the model.")
+if not dataset.ready:
+    st.info(dataset.message)
+    if dataset.missing_columns:
+        st.write("Missing columns:")
+        st.code("\n".join(dataset.missing_columns), language="text")
     st.stop()
 
-st.metric("Model R^2 score", f"{result.r2_score:.3f}")
+st.info(
+    "The prediction model is intentionally not implemented yet. "
+    "This page now prepares the data and leaves the Torch model for you to build."
+)
 
 left, right = st.columns([2, 1])
 with left:
-    st.plotly_chart(
-        prediction_chart(entries, result.predictions),
+    st.subheader("Prepared Training Data")
+    preview_columns = [
+        "entry_date",
+        dataset.target_column,
+        *dataset.feature_columns,
+    ]
+    st.dataframe(
+        dataset.frame[preview_columns],
         use_container_width=True,
+        hide_index=True,
     )
 with right:
-    st.subheader("Predictions")
-    st.dataframe(result.predictions, use_container_width=True, hide_index=True)
+    st.subheader("Model TODOs")
+    st.markdown(
+        """
+- Convert features and target into `torch.float32` tensors
+- Normalize features before training
+- Start with `torch.nn.Linear(input_dim, 1)`
+- Train with MSE loss
+- Track train loss over epochs
+- Add R^2 or MAE once predictions work
+- Generate 7, 14, and 30 day forecast rows
+"""
+    )
 
-st.subheader("Model Coefficients")
-st.dataframe(result.coefficients, use_container_width=True, hide_index=True)
+st.subheader("Feature Columns")
+st.code("\n".join(dataset.feature_columns), language="text")

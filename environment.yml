@@ -1,0 +1,14 @@
+name: fitness-tracking-dashboard
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pip
+  - numpy>=1.26
+  - pandas>=2.2
+  - plotly>=5.22
+  - streamlit>=1.36
+  - pip:
+      - supabase>=2.6
+      # TODO(torch): add torch here when you start implementing the model.
+      # - torch>=2.3

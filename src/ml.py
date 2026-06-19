@@ -1,15 +1,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import timedelta
 
-import numpy as np
 import pandas as pd
-from sklearn.linear_model import LinearRegression
-from sklearn.metrics import r2_score
 
 from src.metrics import prepare_entries
 
+
+MIN_REQUIRED_ENTRIES = 14
+
+TARGET_COLUMN = "body_weight_kg"
 
 FEATURE_COLUMNS = [
     "days_since_start",
@@ -30,62 +30,91 @@ FEATURE_COLUMNS = [
 ]
 
 
-@dataclass
-class PredictionResult:
-    coefficients: pd.DataFrame
-    r2_score: float
-    predictions: pd.DataFrame
+@dataclass(frozen=True)
+class PredictionDataset:
+    frame: pd.DataFrame
+    feature_columns: list[str]
+    target_column: str
+    missing_columns: list[str]
+    ready: bool
+    message: str
 
 
-def train_weight_model(entries: pd.DataFrame) -> PredictionResult | None:
+def build_prediction_dataset(entries: pd.DataFrame) -> PredictionDataset:
+    """Prepare model-ready data without training a model yet.
+
+    TODO(torch):
+    - Import torch only when you start implementing the model.
+    - Convert `frame[feature_columns]` into a float32 tensor.
+    - Convert `frame[target_column]` into a float32 tensor with shape `(n, 1)`.
+    - Normalize features before training; store means/stds for prediction.
+    - Define a small `torch.nn.Module`, likely one linear layer first.
+    - Train with MSE loss and an optimizer such as Adam or SGD.
+    - Return predictions for 7, 14, and 30 days using the latest row as a base.
+    """
     df = prepare_entries(entries)
-    if df.empty or len(df) < 14:
-        return None
+    if df.empty:
+        return _dataset(df, ready=False, message="No entries available yet.")
 
-    model_frame = df.dropna(subset=["body_weight_kg"]).copy()
-    if len(model_frame) < 14:
-        return None
+    model_frame = df.dropna(subset=[TARGET_COLUMN]).copy()
+    if len(model_frame) < MIN_REQUIRED_ENTRIES:
+        return _dataset(
+            model_frame,
+            ready=False,
+            message=f"Add at least {MIN_REQUIRED_ENTRIES} entries with body weight.",
+        )
+
+    missing_columns = [
+        column
+        for column in [TARGET_COLUMN, *FEATURE_COLUMNS]
+        if column not in model_frame.columns
+    ]
+    if missing_columns:
+        return _dataset(
+            model_frame,
+            missing_columns=missing_columns,
+            ready=False,
+            message="Some required model columns are missing.",
+        )
 
     model_frame["workout_done"] = model_frame["workout_done"].astype(int)
     for column in FEATURE_COLUMNS:
         model_frame[column] = pd.to_numeric(model_frame[column], errors="coerce")
+    model_frame[TARGET_COLUMN] = pd.to_numeric(
+        model_frame[TARGET_COLUMN],
+        errors="coerce",
+    )
 
     model_frame[FEATURE_COLUMNS] = model_frame[FEATURE_COLUMNS].fillna(
         model_frame[FEATURE_COLUMNS].median(numeric_only=True)
     )
-    X = model_frame[FEATURE_COLUMNS]
-    y = model_frame["body_weight_kg"]
+    model_frame = model_frame.dropna(subset=[TARGET_COLUMN]).sort_values("entry_date")
 
-    model = LinearRegression()
-    model.fit(X, y)
-    fitted = model.predict(X)
-    score = float(r2_score(y, fitted)) if len(model_frame) > 1 else np.nan
-
-    last = model_frame.sort_values("entry_date").iloc[-1].copy()
-    start_date = model_frame["entry_date"].min()
-    prediction_rows = []
-    for days_ahead in (7, 14, 30):
-        row = last.copy()
-        row["entry_date"] = last["entry_date"] + timedelta(days=days_ahead)
-        row["days_since_start"] = (row["entry_date"] - start_date).days
-        predicted = model.predict(pd.DataFrame([row[FEATURE_COLUMNS]]))[0]
-        prediction_rows.append(
-            {
-                "days_ahead": days_ahead,
-                "entry_date": row["entry_date"],
-                "predicted_body_weight_kg": float(predicted),
-            }
+    if len(model_frame) < MIN_REQUIRED_ENTRIES:
+        return _dataset(
+            model_frame,
+            ready=False,
+            message=f"Add at least {MIN_REQUIRED_ENTRIES} complete weight entries.",
         )
 
-    coefficients = pd.DataFrame(
-        {
-            "feature": FEATURE_COLUMNS,
-            "coefficient": model.coef_,
-        }
-    ).sort_values("coefficient", key=lambda s: s.abs(), ascending=False)
+    return _dataset(
+        model_frame,
+        ready=True,
+        message="Dataset is ready for your Torch implementation.",
+    )
 
-    return PredictionResult(
-        coefficients=coefficients,
-        r2_score=score,
-        predictions=pd.DataFrame(prediction_rows),
+
+def _dataset(
+    frame: pd.DataFrame,
+    missing_columns: list[str] | None = None,
+    ready: bool = False,
+    message: str = "",
+) -> PredictionDataset:
+    return PredictionDataset(
+        frame=frame,
+        feature_columns=FEATURE_COLUMNS,
+        target_column=TARGET_COLUMN,
+        missing_columns=missing_columns or [],
+        ready=ready,
+        message=message,
     )

@@ -1,6 +1,6 @@
 # Fitness Dashboard
 
-A private shared Streamlit dashboard for two friends to manually track fitness and nutrition data, compare progress, and predict future body weight trajectory with a simple linear regression model.
+A private shared Streamlit dashboard for two friends to manually track fitness and nutrition data, compare progress, and prepare for a future body weight prediction model.
 
 ## Features
 
@@ -9,7 +9,7 @@ A private shared Streamlit dashboard for two friends to manually track fitness a
 - Shared visibility across both users
 - Personal charts for weight, calories, protein, steps, workout streak, and weekly averages
 - Friend comparison charts and shared entry table
-- Linear regression prediction page for 7, 14, and 30 day weight trajectory
+- Prediction page scaffold with prepared model features and Torch implementation TODOs
 - Supabase Row Level Security so users can view shared entries but only edit their own rows
 
 ## Project Structure
@@ -30,6 +30,7 @@ fitness-dashboard/
     ml.py
   sql/
     schema.sql
+  environment.yml
   requirements.txt
   README.md
 ```
@@ -38,10 +39,11 @@ fitness-dashboard/
 
 1. Create a Supabase project.
 2. Run `sql/schema.sql` in the Supabase SQL editor.
-3. Install dependencies:
+3. Create and activate the Conda environment:
 
 ```bash
-pip install -r requirements.txt
+conda env create -f environment.yml
+conda activate fitness-tracking-dashboard
 ```
 
 4. Create `.streamlit/secrets.toml`:
@@ -57,6 +59,12 @@ SUPABASE_ANON_KEY = "your-anon-key"
 streamlit run app.py
 ```
 
+If the environment already exists after dependency changes, update it with:
+
+```bash
+conda env update -f environment.yml --prune
+```
+
 ## Streamlit Community Cloud
 
 Set these app secrets in Streamlit Community Cloud:
@@ -68,9 +76,11 @@ SUPABASE_ANON_KEY = "your-anon-key"
 
 Then deploy the repository with `app.py` as the entry point.
 
+`requirements.txt` is kept for Streamlit Community Cloud deployment. Use `environment.yml` for local Conda development.
+
 ## Prediction Notes
 
-The prediction page trains a `LinearRegression` model on the logged-in user's entries. It requires at least 14 entries and uses:
+The prediction page intentionally does not train a model yet. It prepares a model-ready dataset so the Torch implementation can be built later by hand. It requires at least 14 entries and prepares:
 
 - `days_since_start`
 - `calorie_difference`
@@ -88,4 +98,12 @@ The prediction page trains a `LinearRegression` model on the logged-in user's en
 - `7_day_avg_protein`
 - `7_day_avg_activity_calories`
 
-The 7, 14, and 30 day projections hold the latest observed nutrition and activity values constant while advancing `days_since_start`.
+Suggested implementation path:
+
+1. Add `torch` to `environment.yml` and `requirements.txt`.
+2. Convert the prepared feature frame into `torch.float32` tensors.
+3. Normalize input features and keep the training means/stds for inference.
+4. Start with a single-layer `torch.nn.Linear(input_dim, 1)` model.
+5. Train with MSE loss and an optimizer such as Adam or SGD.
+6. Add forecast rows for 7, 14, and 30 days using the latest observed row as the base.
+7. Plot actual weight against the predicted trajectory.
