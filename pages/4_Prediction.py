@@ -4,7 +4,7 @@ import streamlit as st
 
 from src.auth import render_auth_sidebar, require_login
 from src.database import fetch_user_entries
-from src.ml import MIN_REQUIRED_ENTRIES, build_prediction_dataset
+from src.ml import LEARNING_TODOS, MIN_REQUIRED_ENTRIES, build_prediction_dataset
 
 
 st.set_page_config(page_title="Prediction", layout="wide")
@@ -50,16 +50,12 @@ with left:
     )
 with right:
     st.subheader("Model TODOs")
-    st.markdown(
-        """
-- Convert features and target into `torch.float32` tensors
-- Normalize features before training
-- Start with `torch.nn.Linear(input_dim, 1)`
-- Train with MSE loss
-- Track train loss over epochs
-- Add R^2 or MAE once predictions work
-- Generate 7, 14, and 30 day forecast rows
-"""
+    for index, todo in enumerate(LEARNING_TODOS, start=1):
+        st.write(f"{index}. {todo}")
+
+    st.caption(
+        f"Prepared shape: {dataset.row_count} rows x "
+        f"{dataset.feature_count} features."
     )
 
 st.subheader("Feature Columns")

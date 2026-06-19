@@ -30,7 +30,7 @@ fitness-dashboard/
     ml.py
   sql/
     schema.sql
-  environment.yml
+  environment.local.yml
   requirements.txt
   README.md
 ```
@@ -42,7 +42,7 @@ fitness-dashboard/
 3. Create and activate the Conda environment:
 
 ```bash
-conda env create -f environment.yml
+conda env create -f environment.local.yml
 conda activate fitness-tracking-dashboard
 ```
 
@@ -62,7 +62,7 @@ streamlit run app.py
 If the environment already exists after dependency changes, update it with:
 
 ```bash
-conda env update -f environment.yml --prune
+conda env update -f environment.local.yml --prune
 ```
 
 ## Streamlit Community Cloud
@@ -76,7 +76,7 @@ SUPABASE_ANON_KEY = "your-anon-key"
 
 Then deploy the repository with `app.py` as the entry point.
 
-`requirements.txt` is kept for Streamlit Community Cloud deployment. Use `environment.yml` for local Conda development.
+`requirements.txt` is used by Streamlit Community Cloud deployment. Use `environment.local.yml` for local Conda development. The Conda file is intentionally not named `environment.yml` because Streamlit Cloud prioritizes `environment.yml` over `requirements.txt`.
 
 ## Prediction Notes
 
@@ -100,7 +100,7 @@ The prediction page intentionally does not train a model yet. It prepares a mode
 
 Suggested implementation path:
 
-1. Add `torch` to `environment.yml` and `requirements.txt`.
+1. Add `torch` to `environment.local.yml` and `requirements.txt`.
 2. Convert the prepared feature frame into `torch.float32` tensors.
 3. Normalize input features and keep the training means/stds for inference.
 4. Start with a single-layer `torch.nn.Linear(input_dim, 1)` model.
