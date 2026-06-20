@@ -7,7 +7,7 @@ dependencies:
   - numpy>=1.26
   - pandas>=2.2
   - plotly>=5.22
-  - streamlit>=1.36
+  - streamlit>=1.58
   - pip:
       - supabase>=2.6
       # TODO(torch): add torch here when you start implementing the model.

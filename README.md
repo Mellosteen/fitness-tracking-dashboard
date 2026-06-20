@@ -5,6 +5,7 @@ A private shared Streamlit dashboard for two friends to manually track fitness a
 ## Features
 
 - Supabase Auth sign-up, login, and logout
+- Browser-backed authentication sessions that survive refreshes and browser restarts
 - One daily entry per user per date
 - Shared visibility across both users
 - Personal charts for weight, calories, protein, steps, workout streak, and weekly averages
@@ -77,6 +78,8 @@ SUPABASE_ANON_KEY = "your-anon-key"
 Then deploy the repository with `app.py` as the entry point.
 
 `requirements.txt` is used by Streamlit Community Cloud deployment. Use `environment.local.yml` for local Conda development. The Conda file is intentionally not named `environment.yml` because Streamlit Cloud prioritizes `environment.yml` over `requirements.txt`.
+
+Authentication sessions are stored in browser local storage for the deployed app's origin and revalidated with Supabase whenever a new Streamlit session starts. Logging out clears both the Supabase session and the browser copy. Users should log out before leaving a shared device.
 
 ## Prediction Notes
 
